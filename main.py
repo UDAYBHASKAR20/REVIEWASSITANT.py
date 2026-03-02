@@ -133,4 +133,5 @@ DETAILED REVIEW:
 
     time.sleep(1)
 
+
 print("All rows processed successfully.")
