@@ -1,18 +1,27 @@
 import time
 from openai import OpenAI
 import gspread
-from dotenv import load_dotenv
 import os
 import json
 import base64
 from google.oauth2.service_account import Credentials
 
 # ==========================
-# CONFIGURATION (DIRECT STRINGS)
+# ENV VARIABLES
 # ==========================
-load_dotenv()
+
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 SPREADSHEET_ID = os.getenv("SPREADSHEET_ID")
+encoded = os.getenv("GOOGLE_CREDENTIALS")
+
+if not GROQ_API_KEY:
+    raise ValueError("GROQ_API_KEY not found")
+
+if not SPREADSHEET_ID:
+    raise ValueError("SPREADSHEET_ID not found")
+
+if not encoded:
+    raise ValueError("GOOGLE_CREDENTIALS not found")
 
 # ==========================
 # INIT GROQ CLIENT
@@ -31,11 +40,6 @@ scope = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive"
 ]
-
-encoded = os.getenv("GOOGLE_CREDENTIALS")
-
-if not encoded:
-    raise ValueError("GOOGLE_CREDENTIALS_BASE64 not found")
 
 decoded = base64.b64decode(encoded).decode("utf-8")
 creds_dict = json.loads(decoded)
@@ -60,10 +64,6 @@ for index, row in enumerate(rows, start=2):
 
     client_name = row.get("CLIENT NAME")
     google_location = row.get("GOOGLE LOCATION")
-    colour_theme = row.get("COLOUR THE BRAND")
-    logo = row.get("LOGO")
-    instagram = row.get("INSTAGRAM")
-    website = row.get("WEBSITE (OPTIONAL)")
     processed = row.get("Processed")
 
     if processed == "DONE":
@@ -79,10 +79,6 @@ You are writing authentic Google reviews.
 
 Business: {client_name}
 Location: {google_location}
-Brand colour theme: {colour_theme}
-Logo style: {logo}
-Instagram: {instagram}
-Website: {website}
 
 Generate:
 1) A short Google review (15-25 words)
@@ -108,10 +104,6 @@ DETAILED REVIEW:
 
     result_text = response.choices[0].message.content.strip()
 
-    # Parse reviews
-    short_review = ""
-    detailed_review = ""
-
     if "DETAILED REVIEW:" in result_text:
         parts = result_text.split("DETAILED REVIEW:")
         short_review = parts[0].replace("SHORT REVIEW:", "").strip()
@@ -120,18 +112,11 @@ DETAILED REVIEW:
         short_review = result_text
         detailed_review = "Parsing error"
 
-    # Column 7 = SHORT REVIEW
     sheet.update_cell(index, 8, short_review)
-
-    # Column 8 = DETAILED REVIEW
     sheet.update_cell(index, 9, detailed_review)
-
-    # Column 9 = Processed
     sheet.update_cell(index, 10, "DONE")
 
     print(f"Updated: {client_name}")
-
     time.sleep(1)
-
 
 print("All rows processed successfully.")
